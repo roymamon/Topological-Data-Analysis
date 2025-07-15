@@ -1,40 +1,30 @@
 import pandas as pd
 import numpy as np
 import kmapper as km
-from sklearn.cluster import DBSCAN
-from sklearn import metrics
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import pairwise_distances
 import matplotlib.pyplot as plt
-import networkx as nx
 
-data = pd.read_csv("exploratory_data.csv")
-X = data.values
+df = pd.read_csv("exploratory_data.csv")
+data = df.values
 
-distance_matrix = pairwise_distances(X)
-eccentricity = np.max(distance_matrix, axis=1)
+dists = pairwise_distances(data)
+eccentricity = np.mean(dists, axis=1).reshape(-1, 1)
 
-eccentricity = MinMaxScaler().fit_transform(eccentricity.reshape(-1, 1)).flatten()
-
-mapper = km.KeplerMapper(verbose=1)
-
-lens = eccentricity
+mapper = km.KeplerMapper()
 
 cover = km.Cover(n_cubes=10, perc_overlap=0.6)
 
-clusterer = DBSCAN(eps=0.3, min_samples=3)
+clusterer = AgglomerativeClustering(n_clusters=None, distance_threshold=0.5, linkage="single")
 
-graph = mapper.map(lens, X, cover=cover, clusterer=clusterer)
+graph = mapper.map(eccentricity, data, cover=cover, clusterer=clusterer)
 
 mapper.visualize(graph,
-                 path_html="mapper_exploratory_data.html",
-                 title="Mapper Graph: Exploratory Data (Eccentricity)")
+                 path_html="mapper_exploratory_data_threshold_0.5.html",
+                 title="Mapper Graph with Eccentricity Filter",
+                 custom_tooltips=df.values)
 
-G = km.to_networkx(graph)
-
-plt.figure(figsize=(10, 7))
-pos = nx.spring_layout(G, seed=42)
-nx.draw(G, pos, with_labels=False, node_size=40, node_color='skyblue', edge_color='gray')
-plt.title("Mapper Graph (static view)")
-plt.savefig("mapper_exploratory_data.png", dpi=300)
-plt.show()
+plt.figure(figsize=(8, 6))
+km.draw_matplotlib(graph)
+plt.title("Static Mapper Graph (Threshold 0.5)")
+plt.savefig("mapper_exploratory_data_threshold_0.5.png", dpi=300)
